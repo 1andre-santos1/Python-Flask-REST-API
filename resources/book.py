@@ -1,4 +1,3 @@
-import sqlite3
 from flask import request
 from flask_restful import Resource
 from models.book import BookModel
@@ -24,7 +23,7 @@ class Book(Resource):
         book = BookModel(title, data['author'], data['year'], data['copies_sold'])
         
         try:
-            book.insert()
+            book.save_to_db()
         except:
             return {"message":"An error ocurred inserting the book."}, 500
 
@@ -36,14 +35,7 @@ class Book(Resource):
 
         if book:
 
-            connection = sqlite3.connect('data.db')
-            cursor = connection.cursor()
-
-            query = "DELETE FROM books WHERE title = ?"
-            cursor.execute(query, (title,))
-
-            connection.commit()
-            connection.close()
+            book.delete_from_db()
 
             return {'message': 'Book deleted'}
 
@@ -53,39 +45,20 @@ class Book(Resource):
         
         data = request.get_json()
 
-        try:
-            book = BookModel.find_by_title(title)
-        except:
-            return {"message":"An error courred searching for the book"},500
-
-        updated_book = BookModel(title,data['author'],data['year'],data['copies_sold'])
-
+        book = BookModel.find_by_title(title)
+        
         if book is None:
-            try:
-                book.insert()
-            except:
-                return {"message":"An error ocurred inserting the book"},500
+            book = BookModel(title, data['author'], data['year'], data['copies_sold'])
         else:
-            try:
-                book.update()
-            except:
-                return {"message":"An error ocurred updating the book"},500
+            book.author = data['author']
+            book.year = data['year']
+            book.copies_sold = data['copies_sold']
 
-        return updated_book.json()
+        book.save_to_db()
+
+        return book.json()
 
 
 class BookList(Resource):
     def get(self):
-        connection = sqlite3.connect('data.db')
-        cursor = connection.cursor()
-
-        query = "SELECT * FROM books"
-        result = cursor.execute(query)
-
-        books = []
-        for row in result:
-            books.append({'title':row[0],'author':row[1],'year':row[2], 'copies_sold':row[3]})
-
-        connection.close()
-
-        return {'books':books}
+        return {'books':[book.json() for book in BookModel.query.all()]}

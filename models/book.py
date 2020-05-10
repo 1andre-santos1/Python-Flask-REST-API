@@ -1,6 +1,14 @@
-import sqlite3
+from db import db
 
-class BookModel:
+class BookModel(db.Model):
+    __tablename__ = "books"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(250))
+    author = db.Column(db.String(250))
+    year = db.Column(db.Integer)
+    copies_sold = db.Column(db.Integer)
+
     def __init__(self, title, author, year, copies_sold):
         self.title = title
         self.author = author
@@ -12,33 +20,12 @@ class BookModel:
 
     @classmethod
     def find_by_title(cls, title):
-        connection = sqlite3.connect('data.db')
-        cursor = connection.cursor()
-
-        query = "SELECT * FROM books WHERE title =?"
-        result = cursor.execute(query, (title,))
-        row = result.fetchone()
-        connection.close()
-
-        if row:
-            return cls(*row)
+        return BookModel.query.filter_by(title=title).first()
     
-    def insert(self):
-        connection = sqlite3.connect('data.db')
-        cursor = connection.cursor()
+    def save_to_db(self):
+        db.session.add(self)
+        db.session.commit()
 
-        query = "INSERT INTO books VALUES (?, ?, ?, ?)"
-        cursor.execute(query, (self.title, self.author, self.year, self.copies_sold))
-
-        connection.commit()
-        connection.close()
-
-    def update(self):
-        connection = sqlite3.connect('data.db')
-        cursor = connection.cursor()
-
-        query = "UPDATE books SET title=?,author=?,year=?,copies_sold=? WHERE title=?"
-        cursor.execute(query, (self.title, self.author, self.year, self.copies_sold,self.title))
-
-        connection.commit()
-        connection.close()
+    def delete_from_db(self):
+        db.session.delete(self)
+        db.session.commit()
